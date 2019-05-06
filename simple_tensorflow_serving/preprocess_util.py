@@ -19,7 +19,9 @@ def get_functrion_from_marshal_file(function_file_path,
   if os.path.exists(function_file_path):
     with open(function_file_path, "r") as f:
       preprocess_function_string = f.read()
+
       loaded_function = marshal.loads(preprocess_function_string)
+
       function_object = types.FunctionType(loaded_function,
                                            globals(), function_name)
 

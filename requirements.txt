@@ -10,3 +10,4 @@ xgboost
 mxnet
 h2o==3.18.0.8
 python-dotenv
+pybuilder

@@ -378,6 +378,9 @@ def health():
 def image_inference():
   return render_template('image_inference.html')
 
+@application.route('/well_inference', methods=["GET"])
+def well_inference():
+  return render_template('well_inference.html')
 
 @application.route('/run_image_inference', methods=['POST'])
 def run_image_inference():
