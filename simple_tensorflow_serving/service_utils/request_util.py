@@ -11,6 +11,7 @@ import logging
 import base64
 import numpy as np
 from PIL import Image
+import json
 
 logger = logging.getLogger("simple_tensorflow_serving")
 
@@ -97,6 +98,19 @@ def create_json_from_formdata_request(request,
     json_data["signature_name"] = request.form["signature_name"]
   if "run_profile" in request.form:
     json_data["run_profile"] = request.form["run_profile"]
+
+  if "well" in request.files:
+    well_file = request.files["well"]
+    well_content = well_file.read()
+    json_data["data"] = json.loads(well_content)
+    logger.debug("well content file: {}".format(json_data))
+
+    if download_inference_images and save_file_dir is not None:
+      with open(os.path.join(save_file_dir, well_file.filename),
+                "wb") as save_file:
+        save_file.write(well_content)
+    return json_data
+
 
   if "image" not in request.files and "images" not in request.files:
     logger.error("Need to set image or images for form-data")

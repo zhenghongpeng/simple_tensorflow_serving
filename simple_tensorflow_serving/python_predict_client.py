@@ -12,6 +12,7 @@ from PIL import Image
 import numpy as np
 
 
+
 logging.basicConfig(
         format='%(asctime)s %(levelname)-8s %(message)s',
         level=logging.INFO,
@@ -40,10 +41,32 @@ def predict_image(image_file_path, channel_layout="RGB", run_profile="", port=85
 
   # Shape is [-1, -1]
   predict_result = json.loads(result.text)
-  print("Get predict result:{}".format(predict_result))
+  logging.debug("Get predict result:{}".format(predict_result))
 
   return predict_result
 
+def predict_well_file(image_file_path, run_profile="", port=8500):
+  endpoint = "http://127.0.0.1:" + str(port)+"/well"
+
+  img = Image.open(image_file_path)
+  # img = img.convert(channel_layout)
+  img.load()
+  image_ndarray = np.asarray(img, dtype="int32")
+  # Shape is [48, 400, 3] -> [400, 48, 3]
+  image_ndarray = image_ndarray.transpose((1, 0, 2))
+  image_array = [image_ndarray.tolist()]
+  # TODO: Support specified model name
+  json_data = {"model_name": "default",
+               "data": {"image": image_array},
+               "run_profile": run_profile}
+
+  result = requests.post(endpoint, json=json_data)
+
+  # Shape is [-1, -1]
+  predict_result = json.loads(result.text)
+  logging.debug("Get predict result:{}".format(predict_result))
+
+  return predict_result
 
 def predict_json(json_data, port=8500):
   # TODO: Support for other endpoint
@@ -59,6 +82,19 @@ def predict_json(json_data, port=8500):
 
   return predict_result
 
+def predict_well_json(json_data, port=8500):
+  # TODO: Support for other endpoint
+  endpoint = "http://127.0.0.1:" + str(port)+"/well"
+  predict_result = "Error"
+
+  try:
+    result = requests.post(endpoint, json=json_data)
+    predict_result = result.json()
+    logging.debug("Get predict result:{}".format(predict_result))
+  except Exception as e:
+    logging.error("Get result: {} and exception: {}".format(result, e.message))
+
+  return predict_result
 
 def get_gen_json_and_clients(model_name="default", signature_name="serving_default", language="json", port=8500):
   return_result = "Error"

@@ -311,6 +311,15 @@ def inference():
   response.status_code = status_code
   return response
 
+# The API to rocess inference request
+@application.route("/well", methods=["POST"])
+@requires_auth
+def well_post_inference():
+  json_result, status_code = do_well_inference()
+  # TODO: Change the decoder for numpy data
+  response = jsonify(json.loads(json.dumps(json_result, cls=NumpyEncoder)))
+  response.status_code = status_code
+  return response
 
 def do_inference(save_file_dir=None):
   """
@@ -369,6 +378,63 @@ def do_inference(save_file_dir=None):
     }, 400
 
 
+def do_well_inference(save_file_dir=None):
+  """
+    Args:
+      save_file_dir: Path to save data.
+
+    Return:
+      json_data: The inference result or error message.
+      status code: The HTTP response code.
+    """
+
+  if request.content_type.startswith("application/json"):
+    # Process requests with json data
+    try:
+      # Get the json for Python 3 instead of get the data
+      json_data = request.json
+
+      if not isinstance(json_data, dict):
+        result = {"error": "Invalid json data: {}".format(request.data)}
+        return result, 400
+    except Exception as e:
+      result = {"error": "Invalid json data: {}".format(request.data)}
+      return result, 400
+  elif request.content_type.startswith("multipart/form-data"):
+    # Process requests with raw image
+    try:
+      json_data = request_util.create_json_from_formdata_request(
+          request, args.download_inference_images, save_file_dir=save_file_dir)
+    except Exception as e:
+      result = {"error": "Invalid form-data: {}".format(e)}
+      return result, 400
+  else:
+    logger.error("Unsupported content type: {}".format(request.content_type))
+    return {"error": "Error, unsupported content type"}, 400
+
+  if "model_name" in json_data:
+    model_name = json_data.get("model_name")
+  else:
+    model_name = "default"
+
+  if model_name in model_name_service_map:
+    try:
+      inferenceService = model_name_service_map[model_name]
+      # Decode base64 string and modify request json data
+      base64_util.replace_b64_in_dict(json_data)
+      result = inferenceService.well_inference(json_data)
+      return result, 200
+    except Exception as e:
+      result = {"error": "Inference error {}: {}".format(type(e), e)}
+      return result, 400
+  else:
+    return {
+        "error":
+        "Invalid model name: {}, available models: {}".format(
+            model_name, model_name_service_map.keys())
+    }, 400
+
+
 @application.route('/health', methods=["GET"])
 def health():
   return Response("healthy")
@@ -378,9 +444,6 @@ def health():
 def image_inference():
   return render_template('image_inference.html')
 
-@application.route('/well_inference', methods=["GET"])
-def well_inference():
-  return render_template('well_inference.html')
 
 @application.route('/run_image_inference', methods=['POST'])
 def run_image_inference():
@@ -422,10 +485,61 @@ def run_json_inference():
       "data": json_data
   }
 
+  
+
   predict_result = python_predict_client.predict_json(
       request_json_data, port=args.port)
 
   return render_template('json_inference.html', predict_result=predict_result)
+
+@application.route('/well/well_json_inference', methods=["GET"])
+def well_json_inference():
+  return render_template('well_json_inference.html')
+
+
+@application.route('/well/run_well_json_inference', methods=['POST'])
+def run_well_json_inference():
+  # TODO: Fail to parse u'{\r\n  "inputs": [\'\\n\\x1f\\n\\x0e\\n\\x01a\\x12\\t\\n\\x07\\n\\x05hello\\n\\r\\n\\x01b\\x12\\x08\\x12\\x06\\n\\x04\\x00\\x00\\x00?\']\r\n}\r\n          '
+  # {
+  # "inputs": ['\n\x1f\n\x0e\n\x01a\x12\t\n\x07\n\x05hello\n\r\n\x01b\x12\x08\x12\x06\n\x04\x00\x00\x00?']
+  #}
+  json_data_string = request.form["json_data"]
+  json_data = json.loads(json_data_string)
+  model_name = request.form["model_name"]
+  model_version = request.form["model_version"]
+  signature_name = request.form["signature_name"]
+
+  request_json_data = {
+      "model_name": model_name,
+      "model_version": model_version,
+      "signature_name": signature_name,
+      "data": json_data
+  }
+
+  predict_result = python_predict_client.predict_well_json(
+      request_json_data, port=args.port)
+
+  return render_template('well_json_inference.html', predict_result=predict_result)
+
+@application.route('/well/well_inference', methods=["GET"])
+def well_inference():
+  return render_template('well_inference.html')
+
+@application.route('/well/run_well_inference', methods=['POST'])
+def run_well_image_inference():
+  predict_result = do_well_inference(
+      save_file_dir=application.config['UPLOAD_FOLDER'])
+  json_result = json.dumps(predict_result, cls=NumpyEncoder)
+
+  file = request.files['well']
+  well_file_path = os.path.join(application.config['UPLOAD_FOLDER'],
+                                 file.filename)
+
+  return render_template(
+      'well_inference.html',
+      well_file_path=well_file_path,
+      predict_result=json_result)
+
 
 
 # The API to get all models

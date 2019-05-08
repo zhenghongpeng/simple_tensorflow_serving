@@ -5,7 +5,7 @@ from __future__ import division
 from __future__ import print_function
 
 import logging
-import os
+import os, gc
 import signal
 import threading
 import time
@@ -13,9 +13,20 @@ import base64
 import tensorflow as tf
 import marshal
 import types
+import json
+import pandas as pd
+from sklearn.externals import joblib
 
+from keras.models import Sequential
+from keras.layers import Dense
+from keras.models import model_from_json
+from keras.backend.tensorflow_backend import set_session
 from .abstract_inference_service import AbstractInferenceService
+from keras import backend as K
+
 from . import filesystem_util
+from flask import jsonify
+
 
 logger = logging.getLogger('simple_tensorflow_serving')
 
@@ -470,6 +481,72 @@ class TensorFlowInferenceService(AbstractInferenceService):
       result["__PROFILE__"] = result_profile
 
     return result
+
+  def well_inference(self, json_data):
+    """
+    Make well_inference with the current Session object and JSON request data.
+        
+    Args:
+      json_data: The JSON serialized object with key and array data.
+                 Example is {"model_version": 1, "data": {"keys": [[1.0], [2.0]], "features": [[10, 10, 10, 8, 6, 1, 8, 9, 1], [6, 2, 1, 1, 1, 1, 7, 1, 1]]}}.
+    Return:
+      The dictionary with key and array data.
+      Example is {"keys": [[11], [2]], "softmax": [[0.61554497, 0.38445505], [0.61554497, 0.38445505]], "prediction": [0, 0]}.
+    """
+
+    # Use the latest model version if not specified
+    # model_version = json_data.get("model_version", "-1")
+    model_path='models/keras_well/'
+    input_data = json_data.get("data", "")
+    df = pd.DataFrame.from_records(input_data)
+    logger.debug("Loaded model from df count {} ".format(df.describe))
+    logger.debug("Loaded model from df count {} ".format(df.dtypes))
+
+    #### Model files path containing (ScalerX, Scalery, LSTM_model.h5 and LSTM_model.json)
+
+    #### Loading Scaler files
+    scalerX = joblib.load(model_path+'Scaler_X.sav')               
+    scalery = joblib.load(model_path+'Scaler_y.sav')
+
+    values_test_x = df.values
+
+    values_test_x = values_test_x.astype('float64')
+    test_X = scalerX.transform(values_test_x)
+
+    test_X_LSTM = test_X.reshape((test_X.shape[0], 1, test_X.shape[1]))
+
+    logger.debug("test_X_LSTM {} ".format(test_X_LSTM))
+
+    #### Prediction using the loaded trained model
+    # test_y_pred = loaded_model.predict(test_X_LSTM)
+
+    json_data["data"] = {"input_file":test_X_LSTM.tolist()}
+
+    result = self.inference(json_data)
+
+    test_y_pred = list(result.values())[0]
+
+    # for val in test_y_pred:
+    #   logger.debug("prdictin pred val {}".format(val) )
+
+    logger.debug("prdictin pred {}".format(test_y_pred) )
+
+    
+    # # #### Prediction using the loaded trained model
+    # # # test_y_pred = loaded_model.predict(test_X_LSTM)
+    y_pred=scalery.inverse_transform(test_y_pred)
+
+    # # #### Reshaping the actual output and predicted output for plotting
+    y_pred=list(y_pred.reshape((y_pred.shape[0],)))
+
+    logger.debug("prdictin pred reshape{}".format(y_pred) )
+
+    # # K.clear_session()
+    # # gc.collect()
+    # # del loaded_model
+
+    return {"result":str(y_pred)}
+
 
 
 def tensorflow_model_graph_to_dict(model_graph_signature):
