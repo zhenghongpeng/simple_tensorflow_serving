@@ -82,6 +82,18 @@ curl http://localhost:8500/v1/models/default/gen_client?language=python > client
 python ./client.py
 ```
 
+## AWS stack deployment
+
+```
+aws cloudformation create-stack --profile datavedik --stack-name ml-serv --template-body file://$PWD/stack.yml
+
+exporet DOCKER_HOST=tcp://{{ec2publicipaddress}}:2375
+make image dev=latest
+docker run -ti --rm -p 80:8500 aquapion:latest
+aws cloudformation delete-stack --profile datavedik --stack-name ml-serv
+```
+
+
 ## Advanced Usage
 
 ### Multiple Models
