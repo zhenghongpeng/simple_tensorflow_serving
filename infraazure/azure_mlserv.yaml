@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: azure-aquapion-front
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: azure-aquapion-front
+  template:
+    metadata:
+      labels:
+        app: azure-aquapion-front
+    spec:
+      nodeSelector:
+        "beta.kubernetes.io/os": linux
+      containers:
+      - name: azure-aquapion-front
+        image: kpmlserv.azurecr.io/aquapion:v1
+        resources:
+          requests:
+            cpu: 4096m
+            memory: 8192Mi
+          limits:
+            cpu: 8192m
+            memory: 8192Mi
+        ports:
+        - containerPort: 8500
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: azure-aquapion-front
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 80
+  selector:
+    app: azure-aquapion-front

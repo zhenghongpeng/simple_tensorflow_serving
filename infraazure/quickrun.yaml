@@ -1,0 +1,2 @@
+steps:
+  - cmd: -p 80:8500 kpmlserv.azurecr.io/aquapion:v1 

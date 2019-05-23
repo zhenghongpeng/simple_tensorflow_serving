@@ -1,0 +1,139 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: container on ecs cluster
+
+Resources:
+  
+  Task:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: apis
+      Cpu: 2048
+      Memory: 2048
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - EC2
+      ExecutionRoleArn: !ImportValue ECSTaskExecutionRole
+      ContainerDefinitions:
+        - Name: mlserveapi
+          Image: 181748805414.dkr.ecr.us-east-1.amazonaws.com/aquapion:v1
+          PortMappings:
+            - ContainerPort: 8500
+              Protocol: tcp
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: 'apis'
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: 'mlserve-api'
+
+  Service:
+    Type: AWS::ECS::Service
+    DependsOn: ListenerRule
+    Properties:
+      ServiceName: mlserve-service
+      TaskDefinition: !Ref Task
+      Cluster: !ImportValue 'ecsCluster'
+      LaunchType: EC2
+      DesiredCount: 2
+      DeploymentConfiguration:
+        MaximumPercent: 200
+        MinimumHealthyPercent: 70
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: DISABLED
+          Subnets:
+            - !ImportValue spotSubnet1
+            - !ImportValue spotSubnet2
+          SecurityGroups:
+            - !Ref ContainerSecurityGroup
+      LoadBalancers:
+        - ContainerName: mlserveapi
+          ContainerPort: 8500
+          TargetGroupArn: !Ref TargetGroup
+
+  TargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: mlserve-target
+      VpcId: !ImportValue spotVPC
+      Port: 80
+      Protocol: HTTP
+      Matcher:
+        HttpCode: 200-299
+      HealthCheckIntervalSeconds: 10
+      HealthCheckPath: /health
+      HealthCheckProtocol: HTTP
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 10
+      TargetType: ip
+
+  ListenerRule:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      ListenerArn: !Ref LoadBalancerListener
+      Priority: 2
+      Conditions:
+        - Field: path-pattern
+          Values:
+            - /*
+      Actions:
+        - TargetGroupArn: !Ref TargetGroup
+          Type: forward
+
+  LoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: ecs-services-spot
+      Subnets:
+        - !ImportValue 'spotSubnet1'
+        - !ImportValue 'spotSubnet2'
+      SecurityGroups:
+        - !Ref LoadBalancerSecurityGroup
+      LoadBalancerAttributes:
+      - Key: 'idle_timeout.timeout_seconds'
+        Value: 600
+
+  LoadBalancerListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref LoadBalancer
+      Protocol: HTTP
+      Port: 80
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref DefaultTargetGroup
+
+  LoadBalancerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for loadbalancer to services on ECS
+      VpcId: !ImportValue 'spotVPC'
+      SecurityGroupIngress:
+        - CidrIp: 0.0.0.0/0
+          IpProtocol: -1
+
+  DefaultTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: spotdefault
+      VpcId: !ImportValue 'spotVPC'
+      Protocol: 'HTTP'
+      Port: '80'  
+
+  ContainerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup      
+    Properties:
+      VpcId: !ImportValue 'spotVPC'
+      GroupDescription: for ecs containers
+      SecurityGroupIngress:
+        - SourceSecurityGroupId: !Ref 'LoadBalancerSecurityGroup'
+          IpProtocol: -1
+
+Outputs:
+
+  ApiEndpoint:
+    Description: ML API Endpoint
+    Value: !Join ['', ['http://', !GetAtt LoadBalancer.DNSName]]
+    Export:
+      Name: 'MlserveApiEndpoint'
+

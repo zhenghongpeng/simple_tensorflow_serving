@@ -41,3 +41,7 @@ Resources:
         FromPort: '2375'
         ToPort: '2375'
         CidrIp: 0.0.0.0/0
+      - IpProtocol: tcp
+        FromPort: '8500'
+        ToPort: '8500'
+        CidrIp:  172.20.145.97/24
