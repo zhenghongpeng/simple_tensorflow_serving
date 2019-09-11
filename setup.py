@@ -18,7 +18,7 @@ setup(
         'numpy',
         'protobuf',
         'onnx',
-        'flask',
+        'Flask',
         'jinja2',
         'flask-cors',
         'requests',

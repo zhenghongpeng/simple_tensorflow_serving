@@ -18,8 +18,8 @@ RUN cp ./third_party/openscoring/openscoring-server-executable-1.4-SNAPSHOT.jar 
 # RUN pip3 install simple-tensorflow-serving
 RUN python ./setup.py install
 
-EXPOSE 8500
+EXPOSE 5000
 
 # CMD ["simple_tensorflow_serving", "--port=8500", "--model_base_path=./models/tensorflow_template_application_model"]
 # CMD ["simple_tensorflow_serving", "--port=8500", "--model_config_file=./examples/model_config_file.json"]
-CMD ["simple_tensorflow_serving", "--port=8500", "--model_base_path=./models/WellModel"]
+CMD ["simple_tensorflow_serving", "--port=5000", "--model_base_path=./models/WellModel"]

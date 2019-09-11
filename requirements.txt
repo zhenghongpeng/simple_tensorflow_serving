@@ -4,7 +4,8 @@ pillow
 flask-cors
 requests
 uwsgi
-tensorflow>=1.0.0
+setuptools==41.0.0
+tensorflow==1.14
 scikit-learn
 xgboost
 mxnet
@@ -12,3 +13,5 @@ h2o==3.18.0.8
 python-dotenv
 pybuilder
 keras
+prometheus-client==0.6.0
+prometheus-flask-exporter==0.9.1

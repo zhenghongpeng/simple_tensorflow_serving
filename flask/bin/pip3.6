@@ -1,0 +1,10 @@
+#!/media/kevinpeng/0CFA6208FA61EF00/Users/kevin.peng/code/simple_tensorflow_serving/flask/bin/python3.6
+# -*- coding: utf-8 -*-
+import re
+import sys
+
+from pip._internal import main
+
+if __name__ == '__main__':
+    sys.argv[0] = re.sub(r'(-script\.pyw?|\.exe)?$', '', sys.argv[0])
+    sys.exit(main())

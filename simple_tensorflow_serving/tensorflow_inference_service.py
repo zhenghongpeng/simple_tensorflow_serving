@@ -496,6 +496,7 @@ class TensorFlowInferenceService(AbstractInferenceService):
 
     # Use the latest model version if not specified
     # model_version = json_data.get("model_version", "-1")
+    print(json_data)
     model_path='models/keras_well/'
     input_data = json_data.get("data", "")
     df = pd.DataFrame.from_records(input_data)

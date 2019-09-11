@@ -52,8 +52,10 @@ def main():
 
     test_X_LSTM = test_X.reshape((test_X.shape[0], 1, test_X.shape[1]))
 
-    endpoint = "http://127.0.0.1:8500"
+    endpoint = "http://127.0.0.1:5000"
     json_data = {"model_name": "default", "data": {"input_file":test_X_LSTM.tolist() }}
+    with open('input.json', 'w') as outfile:
+        json.dump(json_data, outfile)
     result = requests.post(endpoint, json=json_data)
     print(result.json())
 
