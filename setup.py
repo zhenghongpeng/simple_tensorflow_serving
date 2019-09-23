@@ -18,12 +18,15 @@ setup(
         'numpy',
         'protobuf',
         'onnx',
-        'Flask',
+        'flask',
         'jinja2',
         'flask-cors',
         'requests',
         'pillow',
-        'tensorflow'
+        'tensorflow==1.14',
+        'scikit-learn',
+        'keras',
+        'prometheus_flask_exporter'
     ],
     #package_data={
     #    "simple_tensorflow_serving/static": ['simple_tensorflow_serving/templates/*.html',

@@ -1,11 +1,11 @@
-flask
+Flask
 jinja2
 pillow
 flask-cors
 requests
 uwsgi
 setuptools==41.0.0
-tensorflow==1.14
+tensorflow==1.13.2
 scikit-learn
 xgboost
 mxnet
